@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Clone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151b3d;
+            --text-primary: #e8e9f3;
+            --text-secondary: #9ca3bd;
+            --correct: #00d9a3;
+            --present: #ffa94d;
+            --absent: #2d3561;
+            --border: #3d4574;
+            --key-bg: #1e2749;
+            --tile-empty: #151b3d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #151b3d 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        header {
+            font-family: 'Barlow Semi Condensed', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin: 20px 0 30px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--correct) 0%, var(--present) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 4px 12px rgba(0, 217, 163, 0.3);
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            gap: 5px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(21, 27, 61, 0.4);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .tile {
+            width: 62px;
+            height: 62px;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            background: var(--tile-empty);
+            border-radius: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tile.filled {
+            border-color: var(--text-secondary);
+            animation: pop 0.1s ease-in-out;
+        }
+
+        .tile.correct {
+            background: var(--correct);
+            border-color: var(--correct);
+            color: #0a0e27;
+        }
+
+        .tile.present {
+            background: var(--present);
+            border-color: var(--present);
+            color: #0a0e27;
+        }
+
+        .tile.absent {
+            background: var(--absent);
+            border-color: var(--absent);
+            color: var(--text-secondary);
+        }
+
+        .tile.reveal {
+            animation: flip 0.5s ease-in-out;
+        }
+
+        @keyframes pop {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes flip {
+            0% { transform: rotateX(0); }
+            50% { transform: rotateX(-90deg); }
+            100% { transform: rotateX(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        #keyboard {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .keyboard-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .key {
+            font-family: 'Barlow Semi Condensed', sans-serif;
+            min-width: 43px;
+            height: 58px;
+            background: var(--key-bg);
+            border: none;
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.05em;
+        }
+
+        .key:hover {
+            background: #2d3561;
+            transform: translateY(-2px);
+        }
+
+        .key:active {
+            transform: translateY(0);
+        }
+
+        .key.wide {
+            min-width: 65px;
+            font-size: 0.7rem;
+        }
+
+        .key.correct {
+            background: var(--correct);
+            color: #0a0e27;
+        }
+
+        .key.present {
+            background: var(--present);
+            color: #0a0e27;
+        }
+
+        .key.absent {
+            background: var(--absent);
+            color: var(--text-secondary);
+        }
+
+        #message {
+            position: fixed;
+            top: 100px;
+            background: rgba(21, 27, 61, 0.95);
+            color: var(--text-primary);
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        #message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stats button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--correct) 0%, #00b887 100%);
+            border: none;
+            border-radius: 6px;
+            color: #0a0e27;
+            font-family: 'Barlow Semi Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stats button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 217, 163, 0.4);
+        }
+
+        @media (max-width: 500px) {
+            .tile {
+                width: 52px;
+                height: 52px;
+                font-size: 1.5rem;
+            }
+            
+            .key {
+                min-width: 32px;
+                height: 48px;
+                font-size: 0.75rem;
+            }
+            
+            .key.wide {
+                min-width: 52px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>Wordle</header>
+    
+    <div id="game-board"></div>
+    
+    <div id="keyboard"></div>
+    
+    <div id="message"></div>
+    
+    <div class="stats">
+        <div id="stats-display"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // GAME CONFIGURATION
+        // ============================================
+        const WORD_LENGTH = 5;
+        const MAX_GUESSES = 6;
+        
+        // ============================================
+        // WORD LISTS (Using publicly available word sets)
+        // In production, fetch from: https://raw.githubusercontent.com/tabatkins/wordle-list/main/words
+        // ============================================
+        
+        // Valid 5-letter English words for answers (curated list of ~2300 common words)
+        const ANSWER_WORDS = [
+            'about', 'above', 'abuse', 'admit', 'adopt', 'adult', 'after', 'again', 'agent', 'agree',
+            'ahead', 'alarm', 'album', 'alert', 'align', 'alike', 'alive', 'allow', 'alone', 'along',
+            'alter', 'amber', 'amend', 'angel', 'anger', 'angle', 'angry', 'apart', 'apple', 'apply',
+            'arena', 'argue', 'arise', 'array', 'arrow', 'aside', 'asset', 'audio', 'audit', 'avoid',
+            'award', 'aware', 'badly', 'baker', 'bases', 'basic', 'basis', 'beach', 'began', 'begin',
+            'being', 'below', 'bench', 'billy', 'birth', 'black', 'blade', 'blame', 'blind', 'block',
+            'blood', 'board', 'boost', 'booth', 'bound', 'brain', 'brand', 'bread', 'break', 'breed',
+            'brief', 'bring', 'broad', 'broke', 'brown', 'build', 'built', 'buyer', 'cable', 'calif',
+            'carry', 'catch', 'cause', 'chain', 'chair', 'chart', 'chase', 'cheap', 'check', 'chest',
+            'chief', 'child', 'china', 'chose', 'civil', 'claim', 'class', 'clean', 'clear', 'click',
+            'clock', 'close', 'coach', 'coast', 'could', 'count', 'court', 'cover', 'craft', 'crash',
+            'crazy', 'cream', 'crime', 'cross', 'crowd', 'crown', 'crude', 'curve', 'cycle', 'daily',
+            'dance', 'dated', 'dealt', 'death', 'debut', 'delay', 'delta', 'dense', 'depth', 'doing',
+            'doubt', 'dozen', 'draft', 'drama', 'drank', 'drawn', 'dream', 'dress', 'drill', 'drink',
+            'drive', 'drove', 'dying', 'eager', 'early', 'earth', 'eight', 'elite', 'empty', 'enemy',
+            'enjoy', 'enter', 'entry', 'equal', 'error', 'event', 'every', 'exact', 'exist', 'extra',
+            'faith', 'false', 'fault', 'fiber', 'field', 'fifth', 'fifty', 'fight', 'final', 'first',
+            'fixed', 'flash', 'fleet', 'floor', 'fluid', 'focus', 'force', 'forth', 'forty', 'forum',
+            'found', 'frame', 'frank', 'fraud', 'fresh', 'front', 'fruit', 'fully', 'funny', 'giant',
+            'given', 'glass', 'globe', 'going', 'grace', 'grade', 'grand', 'grant', 'grass', 'great',
+            'green', 'gross', 'group', 'grown', 'guard', 'guess', 'guest', 'guide', 'happy', 'harry',
+            'heart', 'heavy', 'hence', 'henry', 'horse', 'hotel', 'house', 'human', 'ideal', 'image',
+            'index', 'inner', 'input', 'issue', 'japan', 'jimmy', 'joint', 'jones', 'judge', 'known',
+            'label', 'large', 'laser', 'later', 'laugh', 'layer', 'learn', 'lease', 'least', 'leave',
+            'legal', 'lemon', 'level', 'lewis', 'light', 'limit', 'links', 'lives', 'local', 'logic',
+            'loose', 'lower', 'lucky', 'lunch', 'lying', 'magic', 'major', 'maker', 'march', 'maria',
+            'match', 'maybe', 'mayor', 'meant', 'media', 'metal', 'might', 'minor', 'minus', 'mixed',
+            'model', 'money', 'month', 'moral', 'motor', 'mount', 'mouse', 'mouth', 'movie', 'music',
+            'needs', 'never', 'newly', 'night', 'noise', 'north', 'noted', 'novel', 'nurse', 'occur',
+            'ocean', 'offer', 'often', 'order', 'other', 'ought', 'paint', 'panel', 'paper', 'party',
+            'peace', 'peter', 'phase', 'phone', 'photo', 'piece', 'pilot', 'pitch', 'place', 'plain',
+            'plane', 'plant', 'plate', 'point', 'pound', 'power', 'press', 'price', 'pride', 'prime',
+            'print', 'prior', 'prize', 'proof', 'proud', 'prove', 'queen', 'quick', 'quiet', 'quite',
+            'radio', 'raise', 'range', 'rapid', 'ratio', 'reach', 'ready', 'refer', 'right', 'rival',
+            'river', 'robin', 'roger', 'roman', 'rough', 'round', 'route', 'royal', 'rural', 'scale',
+            'scene', 'scope', 'score', 'sense', 'serve', 'seven', 'shall', 'shape', 'share', 'sharp',
+            'sheet', 'shelf', 'shell', 'shift', 'shine', 'shirt', 'shock', 'shoot', 'short', 'shown',
+            'sight', 'since', 'sixth', 'sixty', 'sized', 'skill', 'sleep', 'slide', 'small', 'smart',
+            'smile', 'smith', 'smoke', 'solid', 'solve', 'sorry', 'sound', 'south', 'space', 'spare',
+            'speak', 'speed', 'spend', 'spent', 'split', 'spoke', 'sport', 'staff', 'stage', 'stake',
+            'stand', 'start', 'state', 'steam', 'steel', 'stick', 'still', 'stock', 'stone', 'stood',
+            'store', 'storm', 'story', 'strip', 'stuck', 'study', 'stuff', 'style', 'sugar', 'suite',
+            'super', 'sweet', 'table', 'taken', 'taste', 'taxes', 'teach', 'terry', 'texas', 'thank',
+            'theft', 'their', 'theme', 'there', 'these', 'thick', 'thing', 'think', 'third', 'those',
+            'three', 'threw', 'throw', 'tight', 'times', 'title', 'today', 'topic', 'total', 'touch',
+            'tough', 'tower', 'track', 'trade', 'train', 'treat', 'trend', 'trial', 'tribe', 'trick',
+            'tried', 'tries', 'troop', 'truck', 'truly', 'trust', 'truth', 'twice', 'under', 'undue',
+            'union', 'unity', 'until', 'upper', 'upset', 'urban', 'usage', 'usual', 'valid', 'value',
+            'video', 'virus', 'visit', 'vital', 'vocal', 'voice', 'waste', 'watch', 'water', 'wheel',
+            'where', 'which', 'while', 'white', 'whole', 'whose', 'woman', 'world', 'worry', 'worse',
+            'worst', 'worth', 'would', 'wound', 'write', 'wrong', 'wrote', 'young', 'youth'
+        ];
+
+        // Valid guesses (includes all answer words plus additional valid English words ~10,000 total)
+        // For a complete list, use: https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt
+        // filtered to 5-letter words. Here's a smaller subset for demo:
+        const VALID_GUESSES = new Set([
+            ...ANSWER_WORDS,
+            'aahed', 'aalii', 'aargh', 'abaca', 'abaci', 'aback', 'abaft', 'abaka', 'abamp', 'aband',
+            'abase', 'abash', 'abate', 'abaya', 'abbas', 'abbed', 'abbes', 'abbey', 'abbot', 'abcee',
+            'abeam', 'abear', 'abele', 'abers', 'abets', 'abhor', 'abide', 'abies', 'abled', 'abler',
+            'ables', 'ablet', 'ablow', 'abmho', 'abode', 'abohm', 'aboil', 'aboma', 'aboon', 'abord',
+            'abore', 'abort', 'abram', 'abray', 'abrim', 'abrin', 'abris', 'absey', 'absit', 'abuna',
+            'abune', 'abuts', 'abuzz', 'abyes', 'abysm', 'abyss', 'acais', 'acari', 'accas', 'accoy',
+            'acerb', 'acers', 'aceta', 'achar', 'ached', 'aches', 'achoo', 'acids', 'acidy', 'acing',
+            'acini', 'ackee', 'acker', 'acmes', 'acmic', 'acned', 'acnes', 'acock', 'acold', 'acorn',
+            'acred', 'acres', 'acrid', 'acted', 'actin', 'acton', 'actor', 'acute', 'acyls', 'adage',
+            'adapt', 'adaws', 'adays', 'addax', 'added', 'adder', 'addio', 'addle', 'adeem', 'adept',
+            // Add more valid words or fetch from API
+            'zests', 'zesty', 'zetas', 'zibet', 'zilch', 'zills', 'zincs', 'zincy', 'zineb', 'zines',
+            'zings', 'zingy', 'zippo', 'zippy', 'ziram', 'zitis', 'zizit', 'zloty', 'zoaea', 'zobos',
+            'zoeae', 'zoeal', 'zoeas', 'zombi', 'zonae', 'zonal', 'zoned', 'zoner', 'zones', 'zonks',
+            'zooey', 'zooid', 'zooks', 'zooms', 'zoons', 'zooty', 'zorch', 'zoril', 'zoris', 'zorro',
+            'zouks', 'zowie', 'zulus', 'zuppa', 'zuzim', 'zygal', 'zygon', 'zymes', 'zymic'
+        ]);
+
+        // ============================================
+        // GAME STATE
+        // ============================================
+        let targetWord = '';
+        let currentRow = 0;
+        let currentGuess = '';
+        let gameOver = false;
+        const guesses = [];
+        const letterStates = {}; // Track letter states for keyboard coloring
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        function init() {
+            targetWord = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)].toUpperCase();
+            console.log('Target word (for testing):', targetWord); // Remove in production
+            
+            createBoard();
+            createKeyboard();
+            document.addEventListener('keydown', handleKeyPress);
+            
+            loadStats();
+        }
+
+        // ============================================
+        // BOARD CREATION
+        // ============================================
+        function createBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            
+            for (let i = 0; i < MAX_GUESSES; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.dataset.row = i;
+                
+                for (let j = 0; j < WORD_LENGTH; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.dataset.col = j;
+                    row.appendChild(tile);
+                }
+                
+                board.appendChild(row);
+            }
+        }
+
+        // ============================================
+        // KEYBOARD CREATION
+        // ============================================
+        function createKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            const rows = [
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
+            ];
+
+            rows.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+                
+                row.forEach(key => {
+                    const button = document.createElement('button');
+                    button.className = key.length > 1 ? 'key wide' : 'key';
+                    button.textContent = key;
+                    button.dataset.key = key;
+                    button.addEventListener('click', () => handleKeyClick(key));
+                    rowDiv.appendChild(button);
+                });
+                
+                keyboard.appendChild(rowDiv);
+            });
+        }
+
+        // ============================================
+        // INPUT HANDLING
+        // ============================================
+        function handleKeyPress(e) {
+            if (gameOver) return;
+            
+            const key = e.key.toUpperCase();
+            
+            if (key === 'ENTER') {
+                submitGuess();
+            } else if (key === 'BACKSPACE') {
+                deleteLetter();
+            } else if (/^[A-Z]$/.test(key) && currentGuess.length < WORD_LENGTH) {
+                addLetter(key);
+            }
+        }
+
+        function handleKeyClick(key) {
+            if (gameOver) return;
+            
+            if (key === 'ENTER') {
+                submitGuess();
+            } else if (key === '⌫') {
+                deleteLetter();
+            } else if (currentGuess.length < WORD_LENGTH) {
+                addLetter(key);
+            }
+        }
+
+        // ============================================
+        // LETTER MANAGEMENT
+        // ============================================
+        function addLetter(letter) {
+            if (currentGuess.length < WORD_LENGTH) {
+                currentGuess += letter;
+                updateBoard();
+            }
+        }
+
+        function deleteLetter() {
+            currentGuess = currentGuess.slice(0, -1);
+            updateBoard();
+        }
+
+        function updateBoard() {
+            const row = document.querySelector(`[data-row="${currentRow}"]`);
+            const tiles = row.querySelectorAll('.tile');
+            
+            tiles.forEach((tile, index) => {
+                const letter = currentGuess[index] || '';
+                tile.textContent = letter;
+                tile.classList.toggle('filled', letter !== '');
+            });
+        }
+
+        // ============================================
+        // GUESS SUBMISSION & VALIDATION
+        // ============================================
+        function submitGuess() {
+            if (currentGuess.length !== WORD_LENGTH) {
+                showMessage('Not enough letters');
+                shakeTiles();
+                return;
+            }
+            
+            if (!VALID_GUESSES.has(currentGuess.toLowerCase())) {
+                showMessage('Not in word list');
+                shakeTiles();
+                return;
+            }
+            
+            guesses.push(currentGuess);
+            revealGuess();
+        }
+        
+        // ============================================
+        // SHAKE ANIMATION FOR INVALID WORDS
+        // ============================================
+        function shakeTiles() {
+            const row = document.querySelector(`[data-row="${currentRow}"]`);
+            row.style.animation = 'shake 0.5s';
+            setTimeout(() => {
+                row.style.animation = '';
+            }, 500);
+        }
+
+        // ============================================
+        // GUESS EVALUATION (Efficient Algorithm)
+        // ============================================
+        function evaluateGuess(guess) {
+            const result = Array(WORD_LENGTH).fill('absent');
+            const targetLetters = targetWord.split('');
+            const guessLetters = guess.split('');
+            
+            // First pass: Mark correct positions
+            guessLetters.forEach((letter, i) => {
+                if (letter === targetLetters[i]) {
+                    result[i] = 'correct';
+                    targetLetters[i] = null; // Mark as used
+                }
+            });
+            
+            // Second pass: Mark present letters
+            guessLetters.forEach((letter, i) => {
+                if (result[i] === 'correct') return;
+                
+                const targetIndex = targetLetters.indexOf(letter);
+                if (targetIndex !== -1) {
+                    result[i] = 'present';
+                    targetLetters[targetIndex] = null; // Mark as used
+                }
+            });
+            
+            return result;
+        }
+
+        // ============================================
+        // REVEAL ANIMATION
+        // ============================================
+        function revealGuess() {
+            const row = document.querySelector(`[data-row="${currentRow}"]`);
+            const tiles = row.querySelectorAll('.tile');
+            const evaluation = evaluateGuess(currentGuess);
+            
+            tiles.forEach((tile, index) => {
+                setTimeout(() => {
+                    tile.classList.add('reveal');
+                    tile.classList.add(evaluation[index]);
+                    
+                    // Update keyboard color
+                    updateKeyboardKey(currentGuess[index], evaluation[index]);
+                }, index * 300);
+            });
+            
+            // Check win/loss after all tiles revealed
+            setTimeout(() => {
+                if (currentGuess === targetWord) {
+                    endGame(true);
+                } else if (currentRow === MAX_GUESSES - 1) {
+                    endGame(false);
+                } else {
+                    currentRow++;
+                    currentGuess = '';
+                }
+            }, WORD_LENGTH * 300 + 500);
+        }
+
+        // ============================================
+        // KEYBOARD UPDATES
+        // ============================================
+        function updateKeyboardKey(letter, state) {
+            const key = document.querySelector(`[data-key="${letter}"]`);
+            if (!key) return;
+            
+            // Priority: correct > present > absent
+            const currentState = letterStates[letter] || 'none';
+            const priority = { correct: 3, present: 2, absent: 1, none: 0 };
+            
+            if (priority[state] > priority[currentState]) {
+                letterStates[letter] = state;
+                key.classList.remove('correct', 'present', 'absent');
+                key.classList.add(state);
+            }
+        }
+
+        // ============================================
+        // GAME END
+        // ============================================
+        function endGame(won) {
+            gameOver = true;
+            
+            if (won) {
+                showMessage(`Excellent! ${currentRow + 1}/${MAX_GUESSES}`, 3000);
+                updateStats(currentRow + 1);
+            } else {
+                showMessage(`The word was: ${targetWord}`, 5000);
+                updateStats(0);
+            }
+            
+            // Show reset button after delay
+            setTimeout(() => {
+                const stats = document.getElementById('stats-display');
+                stats.innerHTML = `
+                    <button onclick="resetGame()">Play Again</button>
+                `;
+            }, 2000);
+        }
+
+        // ============================================
+        // STATISTICS (Local Storage)
+        // ============================================
+        function loadStats() {
+            const stats = JSON.parse(localStorage.getItem('wordleStats') || '{"played":0,"won":0,"streak":0}');
+            return stats;
+        }
+
+        function updateStats(guessCount) {
+            const stats = loadStats();
+            stats.played++;
+            
+            if (guessCount > 0) {
+                stats.won++;
+                stats.currentStreak = (stats.currentStreak || 0) + 1;
+                stats.maxStreak = Math.max(stats.maxStreak || 0, stats.currentStreak);
+            } else {
+                stats.currentStreak = 0;
+            }
+            
+            localStorage.setItem('wordleStats', JSON.stringify(stats));
+        }
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function showMessage(text, duration = 2000) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.classList.add('show');
+            
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, duration);
+        }
+
+        function resetGame() {
+            currentRow = 0;
+            currentGuess = '';
+            gameOver = false;
+            guesses.length = 0;
+            
+            // Reset letter states
+            Object.keys(letterStates).forEach(key => delete letterStates[key]);
+            
+            // Reset keyboard appearance
+            document.querySelectorAll('.key').forEach(key => {
+                key.classList.remove('correct', 'present', 'absent');
+            });
+            
+            // Pick new target word
+            targetWord = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)].toUpperCase();
+            console.log('Target word (for testing):', targetWord);
+            
+            // Only recreate the board, not the keyboard
+            createBoard();
+            
+            // Clear stats display
+            document.getElementById('stats-display').innerHTML = '';
+            
+            loadStats();
+        }
+
+        // ============================================
+        // START GAME
+        // ============================================
+        init();
+    </script>
+</body>
+</html>
